@@ -7,7 +7,11 @@ import (
 	"os"
 	"database/sql"
 	"github.com/wexlerdev/chirpy/internal/database"
+	"github.com/joho/godotenv"
+	"log"
 )
+
+import _ "github.com/lib/pq"
 
 
 type apiConfig struct {
@@ -20,10 +24,18 @@ type chirpBody struct {
 }
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		// It's common to log this as a warning for development,
+		// but not necessarily fatal, as env vars might be set externally in production.
+		log.Println("Error loading .env file (this is fine if using external env vars):", err)
+	}
 	dbURL := os.Getenv("DB_URL")
+	fmt.Printf("Value of DB_URL environment variable: '%s'\n", dbURL) // <-- Add this line
+
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("conn err: ", err)
 		os.Exit(1)
 	}
 	dbQueries := database.New(db)
@@ -43,6 +55,7 @@ func main() {
 	mux.HandleFunc("GET /admin/metrics", apiConfig.getRequestCountsHandler)
 	mux.HandleFunc("POST /admin/reset", apiConfig.resetRequestCountsHandler)
 	mux.HandleFunc("POST /api/validate_chirp", validateChirpHandler)
+	mux.HandleFunc("POST /api/users", apiConfig.createUserHandler)
 
 	fileServerHandler := http.FileServer(http.Dir("."))
 	fileServerHandlerNoPrefix := http.StripPrefix("/app/", fileServerHandler)
