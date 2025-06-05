@@ -4,11 +4,15 @@ import (
 	"net/http"
 	"sync/atomic"
 	"fmt"
+	"os"
+	"database/sql"
+	"github.com/wexlerdev/chirpy/internal/database"
 )
 
 
 type apiConfig struct {
 	fileserverHits atomic.Int32
+	dbQueries *database.Queries
 }
 
 type chirpBody struct {
@@ -16,6 +20,14 @@ type chirpBody struct {
 }
 
 func main() {
+	dbURL := os.Getenv("DB_URL")
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	dbQueries := database.New(db)
+
 	mux := http.NewServeMux()
 
 	server := http.Server{
@@ -23,7 +35,9 @@ func main() {
 		Addr:		":8080",
 	}
 
-	apiConfig := apiConfig{}
+	apiConfig := apiConfig{
+		dbQueries: dbQueries,	
+	}
 
 	mux.HandleFunc("GET /admin/healthz", readinessHandler)
 	mux.HandleFunc("GET /admin/metrics", apiConfig.getRequestCountsHandler)

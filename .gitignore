@@ -1,0 +1,10 @@
+# Environment variables
+.env
+
+# Go build outputs
+*.exe
+*.test
+*.log
+
+#sqlc stuff
+internal/database/
