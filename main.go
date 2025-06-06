@@ -2,43 +2,18 @@ package main
 
 import (
 	"net/http"
-	"sync/atomic"
-	"fmt"
-	"os"
-	"database/sql"
-	"github.com/wexlerdev/chirpy/internal/database"
-	"github.com/joho/godotenv"
-	"log"
+	"github.com/wexlerdev/chirpy/internal/handlers"
 )
+
 
 import _ "github.com/lib/pq"
 
-
-type apiConfig struct {
-	fileserverHits atomic.Int32
-	dbQueries *database.Queries
-}
 
 type chirpBody struct {
 	Body string
 }
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		// It's common to log this as a warning for development,
-		// but not necessarily fatal, as env vars might be set externally in production.
-		log.Println("Error loading .env file (this is fine if using external env vars):", err)
-	}
-	dbURL := os.Getenv("DB_URL")
-	fmt.Printf("Value of DB_URL environment variable: '%s'\n", dbURL) // <-- Add this line
-
-	db, err := sql.Open("postgres", dbURL)
-	if err != nil {
-		fmt.Println("conn err: ", err)
-		os.Exit(1)
-	}
-	dbQueries := database.New(db)
 
 	mux := http.NewServeMux()
 
@@ -47,55 +22,25 @@ func main() {
 		Addr:		":8080",
 	}
 
-	apiConfig := apiConfig{
-		dbQueries: dbQueries,	
-	}
+	api := handlers.NewAPI()
 
-	mux.HandleFunc("GET /admin/healthz", readinessHandler)
-	mux.HandleFunc("GET /admin/metrics", apiConfig.getRequestCountsHandler)
-	mux.HandleFunc("POST /admin/reset", apiConfig.resetRequestCountsHandler)
-	mux.HandleFunc("POST /api/validate_chirp", validateChirpHandler)
-	mux.HandleFunc("POST /api/users", apiConfig.createUserHandler)
+	mux.HandleFunc("GET /admin/healthz", api.ReadinessHandler)
+	mux.HandleFunc("GET /admin/metrics", api.GetRequestCountsHandler)
+	//reset endpoint
+	resetHandlerFunc := http.HandlerFunc(api.ResetUsersHandler)
+	wrappedDevOnlyHandler := api.DevOnlyMiddleware(resetHandlerFunc)
+	mux.Handle("POST /admin/reset", wrappedDevOnlyHandler)
+
+	mux.HandleFunc("POST /api/validate_chirp", api.ValidateChirpHandler)
+	mux.HandleFunc("POST /api/users", api.CreateUserHandler)
 
 	fileServerHandler := http.FileServer(http.Dir("."))
 	fileServerHandlerNoPrefix := http.StripPrefix("/app/", fileServerHandler)
-	mux.Handle("/app/", apiConfig.middlewareMetricsInc(fileServerHandlerNoPrefix))
+	mux.Handle("/app/", api.MiddlewareMetricsInc(fileServerHandlerNoPrefix))
 
 
 	server.ListenAndServe()
 }
 
 
-func readinessHandler(writer http.ResponseWriter, req *http.Request) {
-	writer.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	writer.WriteHeader(200)
-	writer.Write([]byte("OK"))
-}
 
-func (cfg *apiConfig) getRequestCountsHandler(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(200)
-	htmlString :=`<html>
-  <body>
-    <h1>Welcome, Chirpy Admin</h1>
-    <p>Chirpy has been visited %d times!</p>
-  </body>
-</html>`
-	outputString := fmt.Sprintf(htmlString, cfg.fileserverHits.Load())
-	w.Write([]byte(outputString))
-}
-
-func (cfg *apiConfig) resetRequestCountsHandler(w http.ResponseWriter, req *http.Request) {
-	w.WriteHeader(200)
-	cfg.fileserverHits.Store(0)
-	w.Write([]byte("Request Counts Reset"))
-}
-
-
-
-func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cfg.fileserverHits.Add(1)
-		next.ServeHTTP(w, r)
-	})
-}

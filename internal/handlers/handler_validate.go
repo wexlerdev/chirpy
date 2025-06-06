@@ -1,4 +1,4 @@
-package main
+package handlers
 import (
 	"encoding/json"
 	"net/http"
@@ -6,7 +6,7 @@ import (
 )
 
 
-func validateChirpHandler(w http.ResponseWriter, req * http.Request) {
+func (api *API) ValidateChirpHandler(w http.ResponseWriter, req * http.Request) {
 	type parameters struct {
 		Body string `json:"body"`
 	}
