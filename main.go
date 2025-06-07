@@ -30,6 +30,8 @@ func main() {
 	mux.Handle("POST /admin/reset", wrappedDevOnlyHandler)
 
 	mux.HandleFunc("POST /api/chirps", api.HandleCreateChirp)
+	mux.HandleFunc("GET /api/chirps/{id}", api.HandleGetChirp)
+	mux.HandleFunc("GET /api/chirps", api.HandleGetAllChirps)
 	mux.HandleFunc("POST /api/users", api.CreateUserHandler)
 
 	fileServerHandler := http.FileServer(http.Dir("."))

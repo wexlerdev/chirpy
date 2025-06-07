@@ -56,6 +56,36 @@ func (api *API) HandleCreateChirp(w http.ResponseWriter, req *http.Request) {
 	respondWithJSON(w, 201, chirp)
 }
 
+func (api * API) HandleGetAllChirps(w http.ResponseWriter, req * http.Request) {
+	dbChirps, err := api.cfg.DbQueries.GetAllChirps(req.Context())
+	if err != nil {
+		respondWithError(w, 500, "error getting chirps from db", err)	
+	}
+
+	chirps := make([]Chirp, 0, len(dbChirps))
+
+	for _, dbChirp := range dbChirps {
+		chirps = append(chirps, *mapDbChirpToChirp(dbChirp))
+	}
+	respondWithJSON(w, 200, chirps)
+}
+
+func (api * API) HandleGetChirp(w http.ResponseWriter, req * http.Request) {
+	chirpId := req.PathValue("id")
+	chirpUuid, err := uuid.Parse(chirpId) 
+	if err != nil {
+		respondWithError(w, 400, "error parsing chirp id", err)
+		return
+	}
+
+	dbChirp, err := api.cfg.DbQueries.GetChirp(req.Context(), chirpUuid)
+	if err != nil {
+		respondWithError(w, 404, "could not find chirp", err)
+		return
+	}
+	respondWithJSON(w, 200, *mapDbChirpToChirp(dbChirp))
+}
+
 func mapDbChirpToChirp(dbChirp database.Chirp) *Chirp {
 	return &Chirp{
 		ID: dbChirp.ID,
@@ -65,3 +95,5 @@ func mapDbChirpToChirp(dbChirp database.Chirp) *Chirp {
 		UserId:		dbChirp.UserID.UUID,
 	}
 }
+
+
