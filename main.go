@@ -1,13 +1,11 @@
 package main
 
 import (
-	"net/http"
 	"github.com/wexlerdev/chirpy/internal/handlers"
+	"net/http"
 )
 
-
 import _ "github.com/lib/pq"
-
 
 type chirpBody struct {
 	Body string
@@ -18,8 +16,8 @@ func main() {
 	mux := http.NewServeMux()
 
 	server := http.Server{
-		Handler:	mux,
-		Addr:		":8080",
+		Handler: mux,
+		Addr:    ":8080",
 	}
 
 	api := handlers.NewAPI()
@@ -31,16 +29,12 @@ func main() {
 	wrappedDevOnlyHandler := api.DevOnlyMiddleware(resetHandlerFunc)
 	mux.Handle("POST /admin/reset", wrappedDevOnlyHandler)
 
-	mux.HandleFunc("POST /api/validate_chirp", api.ValidateChirpHandler)
+	mux.HandleFunc("POST /api/chirps", api.HandleCreateChirp)
 	mux.HandleFunc("POST /api/users", api.CreateUserHandler)
 
 	fileServerHandler := http.FileServer(http.Dir("."))
 	fileServerHandlerNoPrefix := http.StripPrefix("/app/", fileServerHandler)
 	mux.Handle("/app/", api.MiddlewareMetricsInc(fileServerHandlerNoPrefix))
 
-
 	server.ListenAndServe()
 }
-
-
-

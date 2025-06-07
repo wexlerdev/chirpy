@@ -1,36 +1,21 @@
 package handlers
 import (
-	"encoding/json"
-	"net/http"
+	"errors"
 	"strings"
 )
 
 
-func (api *API) ValidateChirpHandler(w http.ResponseWriter, req * http.Request) {
-	type parameters struct {
-		Body string `json:"body"`
-	}
-	type returnVals struct {
-		Body string `json:"cleaned_body"`
-	}
+func validateChirp(bod string) (string, error) {
 
-	decoder := json.NewDecoder(req.Body)
-	params := parameters{}
-	err := decoder.Decode(&params)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't Decode params", err)
-		return
-	}
 
 	const maxChirpLength = 140
-	if len(params.Body) > maxChirpLength {
-		respondWithError(w, http.StatusBadRequest, "chirp is too long", nil)
-		return
+	if len(bod) > maxChirpLength {
+		return bod, errors.New("chirp is too long")
 	}
 
-	respondWithJSON(w, http.StatusOK, returnVals {
-		Body: cleanString(params.Body),
-	})
+	bod = cleanString(bod)
+
+	return bod, nil
 }
 
 func cleanString(str string) string {
