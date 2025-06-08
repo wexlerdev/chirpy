@@ -33,6 +33,7 @@ func main() {
 	mux.HandleFunc("GET /api/chirps/{id}", api.HandleGetChirp)
 	mux.HandleFunc("GET /api/chirps", api.HandleGetAllChirps)
 	mux.HandleFunc("POST /api/users", api.CreateUserHandler)
+	mux.HandleFunc("POST /api/login", api.HandleLogin)
 
 	fileServerHandler := http.FileServer(http.Dir("."))
 	fileServerHandlerNoPrefix := http.StripPrefix("/app/", fileServerHandler)

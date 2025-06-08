@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"encoding/json"
 	"github.com/wexlerdev/chirpy/internal/database"
+	"github.com/wexlerdev/chirpy/internal/auth"
 )
 
 type User struct {
@@ -16,23 +17,31 @@ type User struct {
 }
 
 func (api *API) CreateUserHandler(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	type emailReq struct {
+	type parameters struct {
 		Email string `json:"email"`
+		Password	string `json:"password"`
 	}
-	var emailRequest emailReq
-
+	var params parameters
 
 	decoder := json.NewDecoder(req.Body)
 	defer req.Body.Close()
-	err := decoder.Decode(&emailRequest)
+	err := decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, 500, "error decoding req email", err)
 		return
 	}
 
-	dbUser, err := api.cfg.DbQueries.CreateUser(req.Context(), emailRequest.Email)
+	hashedPassword, err := auth.HashPassword(params.Password)
+	if err != nil {
+		respondWithError(w, 500, "error hashing password", err)
+		return
+	}	
+
+	dbUser, err := api.cfg.DbQueries.CreateUser(req.Context(), database.CreateUserParams{
+		Email: params.Email,
+		HashedPassword: hashedPassword,
+	})
+
 	if err != nil {
 		respondWithError(w, 500, "error creating user", err)
 		return
@@ -49,7 +58,6 @@ func mapDbUserToUser(dbUser database.User) * User {
 	user.CreatedAt = dbUser.CreatedAt
 	user.UpdatedAt = dbUser.UpdatedAt
 	user.Email = dbUser.Email
-
 	return & user
 }
 
@@ -72,6 +80,35 @@ func (api * API) ResetUsersHandler(w http.ResponseWriter, req *http.Request)  {
 	api.cfg.FileserverHits.Store(0)
 
 	respondWithJSON(w, 200, res)
+}
+
+func (api * API) HandleLogin(w http.ResponseWriter, req * http.Request) {
+	type parameters struct {
+		Password string
+		Email string
+	}
+	var params parameters
+
+	decoder := json.NewDecoder(req.Body)
+	defer req.Body.Close()
+	err := decoder.Decode(&params)
+	if err != nil {
+		respondWithError(w, 500, "error parsing login params", err)
+		return
+	}
+	//find user by email
+	dbUser, err := api.cfg.DbQueries.GetUserByEmail(req.Context(), params.Email)
+	if err != nil {
+		respondWithError(w, 401, "error finding user by email", err)
+	}
+	//check password
+	err = auth.CheckPasswordHash(dbUser.HashedPassword, params.Password)
+	if err != nil {
+		respondWithError(w, 401, "password not correct", err)
+	}
+
+	user := mapDbUserToUser(dbUser)
+	respondWithJSON(w, 200, user)
 }
 
 func (api* API) DevOnlyMiddleware(next http.Handler) http.Handler {
