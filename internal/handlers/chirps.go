@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"github.com/google/uuid"
 	"github.com/wexlerdev/chirpy/internal/database"
+	"github.com/wexlerdev/chirpy/internal/auth"
 	"time"
 	"fmt"
+	
 )
 
 type Chirp struct {
@@ -28,9 +30,28 @@ func (api *API) HandleCreateChirp(w http.ResponseWriter, req *http.Request) {
 	decoder := json.NewDecoder(req.Body)
 	defer req.Body.Close()
 	err := decoder.Decode(&chirpReq)
-	fmt.Printf("input uuid for chirp: %v", chirpReq)
+
 	if err != nil {
 		respondWithError(w, 500, "error decoding req for chirp", err)
+		return
+	}
+
+	token, err := auth.GetBearerToken(req.Header)
+	fmt.Printf("token: %v", token)
+	if err != nil {
+		respondWithError(w, 401, "error getting token", err)
+		return
+	}
+
+	//authenticate user
+	userId, err := auth.ValidateJWT(token, api.cfg.JwtSecret)
+	chirpReq.UserId = uuid.NullUUID{
+		UUID: userId,
+		Valid: true,
+	}
+
+	if err != nil {
+		respondWithError(w,401, "error validating token", err)
 		return
 	}
 

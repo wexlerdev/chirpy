@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 	"errors"
+	"net/http"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert" // Import the assert package
 	"github.com/golang-jwt/jwt/v5"
@@ -62,4 +63,41 @@ func TestJWT(t *testing.T) {
 		_, err = ValidateJWT(signedString, test.tokenSecret)
 		assert.Truef(t, errors.Is(err, jwt.ErrTokenExpired), "Expected invalid token from expiring, ERR: %v", err)
 	})
+}
+
+func TestGetBearerToken(t *testing.T) {
+	type testCase struct {
+		name			string
+		headahString 	string
+		expectErr		bool
+		expected		string
+	}
+
+	tests := []testCase{
+		{
+			"validTest1",
+			"Bearer sillywurds ",
+			false,
+			"sillywurds",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t * testing.T) {
+			headah := http.Header{} 
+			headah.Add("Authorization", test.headahString)
+
+			token, err := GetBearerToken(headah)
+			if err != nil {
+				if !test.expectErr {
+					assert.Errorf(t, err, "error unexpected")
+				}
+				return
+			}
+
+			if token != test.expected {
+				assert.Failf(t, "token wrong :(, token: %v, expected %v", token, test.expected)
+			}
+		})
+	}
 }

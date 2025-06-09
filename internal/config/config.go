@@ -14,6 +14,7 @@ type ApiConfig struct {
 	FileserverHits atomic.Int32
 	DbQueries *database.Queries
 	platform string
+	JwtSecret	string
 }
 
 func NewConfig() *ApiConfig {
@@ -34,11 +35,13 @@ func NewConfig() *ApiConfig {
 	}
 
 	platformString := os.Getenv("PLATFORM")
+	jwtSecret := os.Getenv("JWT_SECRET")
 
 	dbQueries := database.New(db)
 	cfg = ApiConfig{
 		DbQueries: dbQueries,
 		platform:		platformString,
+		JwtSecret: jwtSecret,
 	}
 
 

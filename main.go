@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/wexlerdev/chirpy/internal/handlers"
 	"net/http"
+	"fmt"
 )
 
 import _ "github.com/lib/pq"
@@ -34,10 +35,14 @@ func main() {
 	mux.HandleFunc("GET /api/chirps", api.HandleGetAllChirps)
 	mux.HandleFunc("POST /api/users", api.CreateUserHandler)
 	mux.HandleFunc("POST /api/login", api.HandleLogin)
+	mux.HandleFunc("POST /api/refresh", api.HandleRefresh)
+	mux.HandleFunc("POST /api/revoke", api.HandleRevoke)
 
 	fileServerHandler := http.FileServer(http.Dir("."))
 	fileServerHandlerNoPrefix := http.StripPrefix("/app/", fileServerHandler)
 	mux.Handle("/app/", api.MiddlewareMetricsInc(fileServerHandlerNoPrefix))
+
+	fmt.Println("about to listen and serve")
 
 	server.ListenAndServe()
 }
