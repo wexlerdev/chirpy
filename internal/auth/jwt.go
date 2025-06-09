@@ -4,16 +4,19 @@ import (
 	"time"
 	"github.com/google/uuid"
 	"github.com/golang-jwt/jwt/v5"
-	"os"
 	"errors"
 )
 
-func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (string, error) {
-	myLovelySigningKey := os.Getenv("JWT_SIGNING_KEY")
-	if myLovelySigningKey == "" {
-		return "", errors.New("could not get signing key from env")
-	}
+var (
+	errEnv		= errors.New("could not get signing key from env")
+	errSignedString = errors.New("error signing string")
+	errUnexpectedSigningMethod = errors.New("unexpected signing method")
+	errInvalidToken			= errors.New("invalid token")
+	errTokenParse			= errors.New("error parsing token")
+	errSubjectMissing		= errors.New("token subj (userID) is missing")
+)
 
+func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (string, error) {
 	now := time.Now().UTC()
 	claims := &jwt.RegisteredClaims{
 		Issuer: "chirpy",
@@ -22,7 +25,7 @@ func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (str
 		ExpiresAt: jwt.NewNumericDate(now.Add(expiresIn)),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	ss, err := token.SignedString([]byte(myLovelySigningKey))
+	ss, err := token.SignedString([]byte(tokenSecret))
 	if err != nil {
 		return "", err
 	}
@@ -30,27 +33,23 @@ func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (str
 }
 
 func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
-	myLovelySigningKey := os.Getenv("JWT_SIGNING_KEY")
-	if myLovelySigningKey == "" {
-		return uuid.Nil, errors.New("jwt signing key env var either missing or is problematic")
-	}
 	claims := jwt.RegisteredClaims{}
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token)(any, error){
+	token, err := jwt.ParseWithClaims(tokenString, &claims, func(token *jwt.Token)(any, error){
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, errors.New("unexpected signing method")
+			return nil, errUnexpectedSigningMethod
 		}
 		return []byte(tokenSecret), nil
 	})
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, err 
 	}
 
 	if !token.Valid {
-		return uuid.Nil, errors.New("invalid token")
+		return uuid.Nil, errInvalidToken
 	}
 	userIdStr := claims.Subject
 	if userIdStr == "" {
-		return uuid.Nil, errors.New("token subj (userID) is missing")
+		return uuid.Nil, errSubjectMissing 
 	}
 
 	userId, err := uuid.Parse(userIdStr)
