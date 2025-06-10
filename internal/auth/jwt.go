@@ -44,6 +44,10 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 		return uuid.Nil, err 
 	}
 
+	if claims.ExpiresAt.Time.Before(time.Now()) {
+		return uuid.Nil, jwt.ErrTokenExpired
+	}
+
 	if !token.Valid {
 		return uuid.Nil, errInvalidToken
 	}

@@ -53,6 +53,45 @@ func (api *API) CreateUserHandler(w http.ResponseWriter, req *http.Request) {
 	respondWithJSON(w, 201, user)
 }
 
+func (api * API) HandleUpdateUser(w http.ResponseWriter, req *http.Request) {
+	type parameters struct {
+		Email string `json:"email"`
+		Password	string `json:"password"`
+	}
+	var params parameters
+	decoder := json.NewDecoder(req.Body)
+	defer req.Body.Close()
+	err := decoder.Decode(&params)
+	if err != nil {
+		respondWithError(w, 401, "error decoding email and password", err)
+		return
+	}
+	hashedPass, err := auth.HashPassword(params.Password)
+	if err != nil {
+		respondWithError(w, 401, "error hashing pass", err)
+		return
+	}
+	token, err := auth.GetBearerToken(req.Header)
+	if err != nil {
+		respondWithError(w, 401, "error getting auth token", err)
+		return
+	}
+	userId, err := auth.ValidateJWT(token, api.cfg.JwtSecret)
+	if err != nil {
+		respondWithError(w, 401, "error getting user id", err)
+		return
+	}
+	
+
+	dbUser, err := api.cfg.DbQueries.UpdateUser(req.Context(), database.UpdateUserParams{
+		Email: params.Email,
+		HashedPassword: hashedPass,
+		ID: userId,
+	})
+
+	respondWithJSON(w, 200, *mapDbUserToUser(dbUser))
+}
+
 func mapDbUserToUser(dbUser database.User) * User {
 	var user User
 
