@@ -17,6 +17,7 @@ type User struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Email     string    `json:"email"`
+	IsChirpyRed	bool	`json:"is_chirpy_red"`
 }
 
 func (api *API) CreateUserHandler(w http.ResponseWriter, req *http.Request) {
@@ -102,6 +103,7 @@ func mapDbUserToUser(dbUser database.User) * User {
 	user.CreatedAt = dbUser.CreatedAt
 	user.UpdatedAt = dbUser.UpdatedAt
 	user.Email = dbUser.Email
+	user.IsChirpyRed = dbUser.IsChirpyRed
 	return & user
 }
 

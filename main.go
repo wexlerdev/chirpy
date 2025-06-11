@@ -39,6 +39,7 @@ func main() {
 	mux.HandleFunc("POST /api/revoke", api.HandleRevoke)
 	mux.HandleFunc("PUT /api/users", api.HandleUpdateUser)
 	mux.HandleFunc("DELETE /api/chirps/{id}", api.HandleDeleteChirp)
+	mux.HandleFunc("POST /api/polka/webhooks", api.HandleUserUpgrade)
 
 	fileServerHandler := http.FileServer(http.Dir("."))
 	fileServerHandlerNoPrefix := http.StripPrefix("/app/", fileServerHandler)
