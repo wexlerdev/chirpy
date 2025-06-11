@@ -120,17 +120,46 @@ func (api * API) HandleDeleteChirp(w http.ResponseWriter, req * http.Request) {
 }
 
 func (api * API) HandleGetAllChirps(w http.ResponseWriter, req * http.Request) {
-	dbChirps, err := api.cfg.DbQueries.GetAllChirps(req.Context())
+	dbChirps, err := api.GetChirps(req)
 	if err != nil {
-		respondWithError(w, 500, "error getting chirps from db", err)	
+		respondWithError(w, 400, "error getting chirps from db", err)	
 	}
 
-	chirps := make([]Chirp, 0, len(dbChirps))
+	chirps := make([]Chirp,0, len(*dbChirps))
 
-	for _, dbChirp := range dbChirps {
+	for _, dbChirp := range *dbChirps {
 		chirps = append(chirps, *mapDbChirpToChirp(dbChirp))
 	}
+
 	respondWithJSON(w, 200, chirps)
+}
+
+func (api * API) GetChirps(req * http.Request) (*[]database.Chirp, error) {
+	authorId := req.URL.Query().Get("author_id")
+	sortString := req.URL.Query().Get("sort")
+
+	if authorId != "" {
+		authorUUID, err := uuid.Parse(authorId)
+		if err != nil {
+			return nil, err
+		}
+		authorNUUID := uuid.NullUUID{UUID: authorUUID, Valid: true}
+		if sortString == "desc" {
+			dbChirps, err := api.cfg.DbQueries.GetChirpsByAuthorIdDesc(req.Context(), authorNUUID)
+			return &dbChirps, err
+		}
+		
+		dbChirps, err := api.cfg.DbQueries.GetChirpsByAuthorIdAsc(req.Context(), authorNUUID)
+		return &dbChirps, err
+	} 
+
+	if sortString == "desc" {
+		dbChirps, err := api.cfg.DbQueries.GetAllChirpsDesc(req.Context())
+		return &dbChirps, err
+	}
+
+	dbChirps, err := api.cfg.DbQueries.GetAllChirpsAsc(req.Context())
+	return &dbChirps, err
 }
 
 func (api * API) HandleGetChirp(w http.ResponseWriter, req * http.Request) {
