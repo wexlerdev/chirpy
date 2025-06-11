@@ -38,6 +38,7 @@ func main() {
 	mux.HandleFunc("POST /api/refresh", api.HandleRefresh)
 	mux.HandleFunc("POST /api/revoke", api.HandleRevoke)
 	mux.HandleFunc("PUT /api/users", api.HandleUpdateUser)
+	mux.HandleFunc("DELETE /api/chirps/{id}", api.HandleDeleteChirp)
 
 	fileServerHandler := http.FileServer(http.Dir("."))
 	fileServerHandlerNoPrefix := http.StripPrefix("/app/", fileServerHandler)

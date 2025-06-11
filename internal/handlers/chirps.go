@@ -8,6 +8,7 @@ import (
 	"github.com/wexlerdev/chirpy/internal/auth"
 	"time"
 	"fmt"
+	"errors"
 	
 )
 
@@ -75,6 +76,47 @@ func (api *API) HandleCreateChirp(w http.ResponseWriter, req *http.Request) {
 
 	chirp := mapDbChirpToChirp(dbChirp)
 	respondWithJSON(w, 201, chirp)
+}
+
+func (api * API) HandleDeleteChirp(w http.ResponseWriter, req * http.Request) {
+	//get the access token in header
+	token, err := auth.GetBearerToken(req.Header)
+	if err != nil {
+		respondWithError(w, 401, "did not get token from header", err)
+		return
+	}
+	//get the chirpId from the path param
+	idString := req.PathValue("id")
+	idParam, err := uuid.Parse(idString)
+	if err != nil {
+		respondWithError(w, 401, "did not parse idparam to uuid", err)
+		return
+	}
+	//get the chirp from the db
+	chirp, err := api.cfg.DbQueries.GetChirp(req.Context(), idParam)
+	if err != nil {
+		respondWithError(w, 404, "did not find chirp", err)
+		return
+	}
+
+	//get the id in the jwt
+	idJwt, err := auth.ValidateJWT(token, api.cfg.JwtSecret)
+	if err != nil {
+		respondWithError(w, 401, "did not validate jwt", err)
+		return
+	}
+
+	//check if userId in chirp matching user id of access token
+	if chirp.UserID.UUID != idJwt {
+		respondWithError(w, 403, "user cannot delete this chirp", errors.New("user unauthorized"))
+		return
+	}
+	//user is authorized :)
+	_, err = api.cfg.DbQueries.DeleteChirp(req.Context(), chirp.ID)
+	if err != nil {
+		respondWithError(w, 500, "error deleting chirp", err)
+	}
+	w.WriteHeader(204)
 }
 
 func (api * API) HandleGetAllChirps(w http.ResponseWriter, req * http.Request) {

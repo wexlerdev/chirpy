@@ -27,4 +27,3 @@ updated_at = NOW(),
 revoked_at = NOW()
 WHERE $1 = token;
 
-
