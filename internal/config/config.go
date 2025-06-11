@@ -15,6 +15,7 @@ type ApiConfig struct {
 	DbQueries *database.Queries
 	platform string
 	JwtSecret	string
+	PolkaKey	string
 }
 
 func NewConfig() *ApiConfig {
@@ -36,12 +37,14 @@ func NewConfig() *ApiConfig {
 
 	platformString := os.Getenv("PLATFORM")
 	jwtSecret := os.Getenv("JWT_SECRET")
+	polkaKey := os.Getenv("POLKA_KEY")
 
 	dbQueries := database.New(db)
 	cfg = ApiConfig{
 		DbQueries: dbQueries,
 		platform:		platformString,
 		JwtSecret: jwtSecret,
+		PolkaKey: polkaKey,
 	}
 
 
